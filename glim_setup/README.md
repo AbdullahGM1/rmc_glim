@@ -208,9 +208,12 @@ LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH ros2 run glim_ros glim_rosnode
 
 GLIM should load all modules and print lines like:
 ```
+[glim] [info] config_path: /opt/ros/jazzy/share/glim/config
 [glim] [info] load libodometry_estimation_gpu.so
 [glim] [info] load libsub_mapping.so
 [glim] [info] load libglobal_mapping.so
-[glim] [info] waiting for odometry estimation
+[glim] [info] load libmemory_monitor.so
+[glim] [info] load libstandard_viewer.so
+[glim] [info] load librviz_viewer.so
 ```
 Then exit cleanly. If you see those lines — GLIM is working correctly.
