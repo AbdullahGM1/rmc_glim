@@ -1,0 +1,14 @@
+# Conversion venv
+ros2_bags/ros2_bag_convert/venv/
+
+# GLIM map dumps
+# maps/
+
+# Bag files (tracked via Git LFS)
+*.db3
+*.bag
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
