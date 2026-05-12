@@ -69,8 +69,23 @@ The script is **idempotent** — safe to re-run; already-completed steps are ski
 ## After installation
 
 ```bash
-cd ros2_ws
+cd ros2_rmc_ws
 colcon build --packages-select slam_glim --symlink-install
 source install/setup.bash
-ros2 launch slam_glim glim.launch.py
 ```
+
+## Verify GLIM is installed and running
+
+```bash
+# LD_LIBRARY_PATH is required to pick the correct GTSAM version over ROS Jazzy's bundled one
+LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH ros2 run glim_ros glim_rosnode
+```
+
+GLIM should load all modules and print lines like:
+```
+[glim] [info] load libodometry_estimation_gpu.so
+[glim] [info] load libsub_mapping.so
+[glim] [info] load libglobal_mapping.so
+[glim] [info] waiting for odometry estimation
+```
+Then exit cleanly. If you see those lines — GLIM is working correctly.
