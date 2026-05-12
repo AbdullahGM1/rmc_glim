@@ -1,8 +1,8 @@
 # Conversion venv
 ros2_bags/ros1_bag_convert/venv/
 
-# GLIM map dumps
-# maps/
+# GLIM ros2 bags
+bag_test
 
 # Bag files (tracked via Git LFS)
 *.db3
