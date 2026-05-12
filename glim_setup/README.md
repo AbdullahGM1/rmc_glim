@@ -66,31 +66,10 @@ The script is **idempotent** — safe to re-run; already-completed steps are ski
 
 ---
 
-## Troubleshooting
-
-**`nvidia-smi` fails with "Driver/library version mismatch"**
-This happens after a kernel update before a reboot. Reboot and re-run. If still broken, pass the variant manually:
-```bash
-./setup.sh 13.1
-```
-
-**`libcudart.so.<major>` symlink not found**
-The script searches common locations (Ollama path, `/usr/local/cuda`, system lib). If none are found it prints the exact paths it searched. Find it manually and create the symlink:
-```bash
-find /usr /usr/local -name 'libcudart.so.13' 2>/dev/null
-sudo ln -s <found_path> /usr/local/lib/libcudart.so.13
-sudo ldconfig
-```
-
-**GTSAM conflict (ROS Jazzy 4.2.0 vs PPA 4.3.0)**
-No action needed — `glim.launch.py` automatically prepends `/usr/local/lib` to `LD_LIBRARY_PATH` to force the correct GTSAM version at runtime.
-
----
-
 ## After installation
 
 ```bash
-cd ros2_rmc_ws
+cd ros2_ws
 colcon build --packages-select slam_glim --symlink-install
 source install/setup.bash
 ros2 launch slam_glim glim.launch.py
