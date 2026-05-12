@@ -12,3 +12,6 @@ bag_test
 __pycache__/
 *.pyc
 *.pyo
+
+# GLIM viewer auto-generated state
+imgui.ini
