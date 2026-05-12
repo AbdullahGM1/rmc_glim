@@ -8,6 +8,10 @@ Converts ROS1 `.bag` files to ROS2 `.db3` bags using the `rosbags-convert` tool 
 
 ```bash
 cd ros2_bags/ros1_bag_convert
+
+# Make scripts executable (once per machine)
+chmod +x setup.sh convert_bag.sh
+
 ./setup.sh
 ```
 
