@@ -128,47 +128,8 @@ banner "Step 6 — GLIM ROS package"
 sudo apt install -y "$GLIM_PKG"
 info "Installed: $GLIM_PKG"
 
-# ── Step 7: Fix libcudart.so symlink (CUDA builds only) ──────────────────────
-banner "Step 7 — libcudart.so symlink"
-
-if [[ "$CUDA_VARIANT" == "none" ]]; then
-    info "No-CUDA build — symlink not needed, skipping."
-else
-    CUDA_MAJOR=$(echo "$CUDA_VARIANT" | cut -d. -f1)
-    CUDART_LINK="/usr/local/lib/libcudart.so.${CUDA_MAJOR}"
-
-    if [[ -e "$CUDART_LINK" ]]; then
-        info "libcudart.so.${CUDA_MAJOR} already exists — skipping."
-    else
-        CUDART_SRC=""
-        SEARCH_PATHS=(
-            "/usr/local/lib/ollama/cuda_v${CUDA_MAJOR}/libcudart.so.${CUDA_MAJOR}"
-            "/usr/local/cuda/lib64/libcudart.so.${CUDA_MAJOR}"
-            "/usr/lib/x86_64-linux-gnu/libcudart.so.${CUDA_MAJOR}"
-        )
-
-        for path in "${SEARCH_PATHS[@]}"; do
-            if [[ -f "$path" ]]; then
-                CUDART_SRC="$path"
-                break
-            fi
-        done
-
-        if [[ -z "$CUDART_SRC" ]]; then
-            warn "Could not find libcudart.so.${CUDA_MAJOR} in any known location."
-            warn "Searched:"
-            for path in "${SEARCH_PATHS[@]}"; do warn "  $path"; done
-            warn "Find it manually: find /usr /usr/local -name 'libcudart.so.${CUDA_MAJOR}' 2>/dev/null"
-            warn "Then run: sudo ln -s <found_path> ${CUDART_LINK} && sudo ldconfig"
-        else
-            info "Creating symlink: ${CUDART_LINK} → ${CUDART_SRC}"
-            sudo ln -s "$CUDART_SRC" "$CUDART_LINK"
-        fi
-    fi
-fi
-
-# ── Step 8: ldconfig ──────────────────────────────────────────────────────────
-banner "Step 8 — ldconfig"
+# ── Step 7: ldconfig ──────────────────────────────────────────────────────────
+banner "Step 7 — ldconfig"
 sudo ldconfig
 
 # ── Done ──────────────────────────────────────────────────────────────────────

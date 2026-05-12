@@ -1,7 +1,7 @@
 # GLIM Setup
 
-Automated installation script for GLIM 3D SLAM on **Ubuntu 24.04 / ROS2 Jazzy**.
-Handles dependency installation, PPA setup, CUDA variant selection, and library fixes in one shot.
+Automated installation scripts for GLIM 3D SLAM on **Ubuntu 24.04 / ROS2 Jazzy**.
+Run the four scripts in order on a fresh machine to get a fully working GLIM setup.
 
 ---
 
@@ -10,26 +10,81 @@ Handles dependency installation, PPA setup, CUDA variant selection, and library 
 | | |
 |---|---|
 | OS | Ubuntu 24.04 |
-| ROS | ROS2 Jazzy |
-| GPU | NVIDIA GPU with CUDA 12.6 or 13.1 (optional — a no-CUDA build is available) |
+| GPU | NVIDIA GPU with CUDA 12.6 or 13.1+ (optional — a no-CUDA build is available) |
 
 ---
 
 ## Usage
 
+### Option A — Single command (recommended)
+
 ```bash
 cd glim_setup
+chmod +x install.sh
+./install.sh        # auto-detect CUDA
+./install.sh 13.1   # or specify variant manually
+```
 
-# Make executable (once)
-chmod +x setup.sh
+`install.sh` detects what is already installed and runs only the missing steps.
+The only interruption is a mandatory reboot after the NVIDIA driver install — it will
+tell you when to reboot and resume from where it left off when you re-run it.
+
+---
+
+### Option B — Run each script manually
+
+### Step 1 — Install NVIDIA driver
+
+```bash
+cd glim_setup
+chmod +x driver_setup.sh
+./driver_setup.sh
+```
+
+Installs the recommended NVIDIA driver for your GPU using Ubuntu's `ubuntu-drivers` tool.
+
+**Reboot required after this step before continuing.**
+
+Skip if `nvidia-smi` already returns output.
+
+### Step 2 — Install ROS2 Jazzy Desktop
+
+```bash
+chmod +x ros2_setup.sh
+./ros2_setup.sh
+```
+
+Installs the full ROS2 Jazzy Desktop from the official ROS2 apt source. Includes RViz2, rqt,
+ros2cli, and all GUI tools. Adds `source /opt/ros/jazzy/setup.bash` to `~/.bashrc`.
+
+Restart your terminal after this step before continuing.
+
+Skip if ROS2 Jazzy is already installed at `/opt/ros/jazzy`.
+
+### Step 3 — Install CUDA toolkit
+
+```bash
+chmod +x cuda_setup.sh
+./cuda_setup.sh
+```
+
+Installs CUDA 13.2 from NVIDIA's official repository. Places `libcudart.so.13` in a standard
+path the dynamic linker finds automatically. Verifies GLIM can access it before finishing.
+
+Skip if the CUDA toolkit is already installed via the official NVIDIA repo.
+
+### Step 4 — Install GLIM
+
+```bash
+chmod +x glim_setup.sh
 
 # Auto-detect CUDA version from nvidia-smi
-./setup.sh
+./glim_setup.sh
 
 # Or choose a variant manually:
-./setup.sh none    # Without CUDA
-./setup.sh 12.6    # With CUDA 12.6
-./setup.sh 13.1    # With CUDA 13.1
+./glim_setup.sh none    # Without CUDA
+./glim_setup.sh 12.6    # With CUDA 12.6
+./glim_setup.sh 13.1    # With CUDA 13.1
 ```
 
 ---
@@ -61,7 +116,48 @@ To make GLIM load the correct version, `/usr/local/lib` must appear **before** `
 
 ---
 
-## What the script does
+## What each script does
+
+### driver_setup.sh
+
+| Step | Action |
+|---|---|
+| 1 | Verifies Ubuntu 24.04 — exits early if not |
+| 2 | Checks if NVIDIA driver is already working (`nvidia-smi`) — exits early if so |
+| 3 | Runs `apt update && apt upgrade` |
+| 4 | Installs `ubuntu-drivers-common` |
+| 5 | Lists available NVIDIA drivers for your GPU |
+| 6 | Installs the recommended driver via `ubuntu-drivers install` (pre-built, signed, Secure Boot compatible) |
+| 7 | Verifies the driver package is present in dpkg |
+
+**A reboot is required after this script before running `cuda_setup.sh`.**
+
+### ros2_setup.sh
+
+| Step | Action |
+|---|---|
+| 1 | Verifies Ubuntu 24.04 — exits early if not |
+| 2 | Checks if ROS2 Jazzy is already installed — exits early if so |
+| 3 | Sets locale to `en_US.UTF-8` |
+| 4 | Enables the `universe` apt repository |
+| 5 | Adds the official ROS2 apt source |
+| 6 | Installs `ros-dev-tools` |
+| 7 | Installs `ros-jazzy-desktop` (full desktop — RViz2, rqt, all GUI tools) |
+| 8 | Adds `source /opt/ros/jazzy/setup.bash` to `~/.bashrc` |
+| 9 | Verifies the installation: `/opt/ros/jazzy`, `ros2` CLI, `rviz2`, and `~/.bashrc` entry |
+
+### cuda_setup.sh
+
+| Step | Action |
+|---|---|
+| 1 | Verifies Ubuntu 24.04 and NVIDIA driver are present |
+| 2 | Checks if CUDA 13.2 is already installed — exits early if so |
+| 3 | Adds NVIDIA's official CUDA repository via `cuda-keyring` |
+| 4 | Installs `cuda-toolkit-13-2` — places `libcudart.so.13` in `/usr/local/cuda-13.2/lib64/` |
+| 5 | Runs `ldconfig` to update the linker cache (the apt package registers its own entry during install) |
+| 6 | Verifies `nvcc` and `libcudart.so.13` are found by the linker |
+
+### glim_setup.sh
 
 | Step | Action |
 |---|---|
@@ -71,10 +167,9 @@ To make GLIM load the correct version, `/usr/local/lib` must appear **before** `
 | 4 | Installs dependencies: `libiridescence-dev`, `libboost-all-dev`, `libglfw3-dev`, `libmetis-dev` |
 | 5 | Installs `gtsam_points` (koide3's point cloud extension for GTSAM 4.3a0) from PPA into `/usr/local/lib/` |
 | 6 | Installs the GLIM ROS package matching the selected variant |
-| 7 | Creates the `libcudart.so.<major>` symlink if missing (CUDA builds only) |
-| 8 | Runs `sudo ldconfig` |
+| 7 | Runs `sudo ldconfig` |
 
-The script is **idempotent** — safe to re-run; already-completed steps are skipped.
+Both scripts are **idempotent** — safe to re-run; already-completed steps are skipped.
 
 ---
 
