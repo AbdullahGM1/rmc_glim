@@ -1,0 +1,93 @@
+rosbag2_bagfile_information:
+  compression_format: ''
+  compression_mode: ''
+  custom_data: null
+  duration:
+    nanoseconds: 112961179608
+  files:
+  - duration:
+      nanoseconds: 112961179608
+    message_count: 32720
+    path: fused_upper.db3
+    starting_time:
+      nanoseconds_since_epoch: 1776325995873557900
+  message_count: 32720
+  relative_file_paths:
+  - fused_upper.db3
+  ros_distro: rosbags
+  starting_time:
+    nanoseconds_since_epoch: 1776325995873557900
+  storage_identifier: sqlite3
+  topics_with_message_count:
+  - message_count: 11297
+    topic_metadata:
+      name: /imu
+      offered_qos_profiles: []
+      serialization_format: cdr
+      type: sensor_msgs/msg/Imu
+      type_description_hash: 
+        RIHS01_7d9a00ff131080897a5ec7e26e315954b8eae3353c3f995c55faf71574000b5b
+  - message_count: 11296
+    topic_metadata:
+      name: /imu/gravity
+      offered_qos_profiles: []
+      serialization_format: cdr
+      type: sensor_msgs/msg/Imu
+      type_description_hash: 
+        RIHS01_7d9a00ff131080897a5ec7e26e315954b8eae3353c3f995c55faf71574000b5b
+  - message_count: 1
+    topic_metadata:
+      name: /tf_static
+      offered_qos_profiles:
+      - avoid_ros_namespace_conventions: false
+        deadline:
+          nsec: 4294967295
+          sec: 2147483647
+        depth: 1
+        durability: transient_local
+        history: keep_last
+        lifespan:
+          nsec: 4294967295
+          sec: 2147483647
+        liveliness: automatic
+        liveliness_lease_duration:
+          nsec: 4294967295
+          sec: 2147483647
+        reliability: reliable
+      serialization_format: cdr
+      type: tf2_msgs/msg/TFMessage
+      type_description_hash: 
+        RIHS01_e369d0f05a23ae52508854b66f6aa0437f3449d652e8cbf22d5abe85d020f087
+  - message_count: 2824
+    topic_metadata:
+      name: /odom/raw
+      offered_qos_profiles: []
+      serialization_format: cdr
+      type: nav_msgs/msg/Odometry
+      type_description_hash: 
+        RIHS01_3cc97dc7fb7502f8714462c526d369e35b603cfc34d946e3f2eda2766dfec6e0
+  - message_count: 2824
+    topic_metadata:
+      name: /tf
+      offered_qos_profiles: []
+      serialization_format: cdr
+      type: tf2_msgs/msg/TFMessage
+      type_description_hash: 
+        RIHS01_e369d0f05a23ae52508854b66f6aa0437f3449d652e8cbf22d5abe85d020f087
+  - message_count: 2239
+    topic_metadata:
+      name: /scan
+      offered_qos_profiles: []
+      serialization_format: cdr
+      type: sensor_msgs/msg/LaserScan
+      type_description_hash: 
+        RIHS01_64c191398013af96509d518dac71d5164f9382553fce5c1f8cca5be7924bd828
+  - message_count: 2239
+    topic_metadata:
+      name: /velodyne_points
+      offered_qos_profiles: []
+      serialization_format: cdr
+      type: sensor_msgs/msg/PointCloud2
+      type_description_hash: 
+        RIHS01_9198cabf7da3796ae6fe19c4cb3bdd3525492988c70522628af5daa124bae2b5
+  version: 9
