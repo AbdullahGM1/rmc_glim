@@ -29,6 +29,8 @@ chmod +x install.sh
 The only interruption is a mandatory reboot after the NVIDIA driver install — it will
 tell you when to reboot and resume from where it left off when you re-run it.
 
+Also installs `git-lfs` and pulls the bag files (~3.3 GB) automatically.
+
 ---
 
 ### Option B — Run each script manually
@@ -86,6 +88,20 @@ chmod +x glim_setup.sh
 ./glim_setup.sh 12.6    # With CUDA 12.6
 ./glim_setup.sh 13.1    # With CUDA 13.1
 ```
+
+### Step 5 — Download bag files (Git LFS)
+
+The bag files (`.db3`) are stored in Git LFS. Without this step they exist as 130-byte
+pointer files and `ros2 bag play` will fail.
+
+```bash
+sudo apt install -y git-lfs
+git lfs install
+cd ..
+git lfs pull
+```
+
+Total download: ~3.3 GB (`lower_fused` 1.6 GB, `merged_bag` 1.1 GB, `fused_upper` 623 MB).
 
 ---
 

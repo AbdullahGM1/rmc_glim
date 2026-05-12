@@ -27,6 +27,7 @@ driver_installed(){ dpkg -l 2>/dev/null | grep -q "nvidia-driver"; }
 ros2_installed()  { [[ -d /opt/ros/jazzy ]]; }
 cuda_installed()  { [[ -d /usr/local/cuda-13.2 ]]; }
 glim_installed()  { dpkg -l 2>/dev/null | grep -q "ros-jazzy-glim-ros"; }
+lfs_pulled()      { find "$(cd "$SCRIPT_DIR/.." && pwd)/ros2_bags" -name "*.db3" -size +1M 2>/dev/null | grep -q .; }
 
 # ── Progress header ───────────────────────────────────────────────────────────
 echo ""
@@ -45,10 +46,12 @@ cuda_installed  && echo -e "  ${GREEN}[✓]${NC} CUDA 13.2 toolkit" \
                 || echo -e "  ${RED}[✗]${NC} CUDA 13.2 toolkit"
 glim_installed  && echo -e "  ${GREEN}[✓]${NC} GLIM" \
                 || echo -e "  ${RED}[✗]${NC} GLIM"
+lfs_pulled      && echo -e "  ${GREEN}[✓]${NC} Bag files (Git LFS)" \
+                || echo -e "  ${RED}[✗]${NC} Bag files (Git LFS — not downloaded)"
 echo ""
 
 # ── Already complete? ─────────────────────────────────────────────────────────
-if driver_active && ros2_installed && cuda_installed && glim_installed; then
+if driver_active && ros2_installed && cuda_installed && glim_installed && lfs_pulled; then
     info "All steps complete — GLIM is fully installed."
     echo ""
     info "Build and run:"
@@ -112,7 +115,7 @@ fi
 
 # ── Step 4: GLIM ─────────────────────────────────────────────────────────────
 if ! glim_installed; then
-    banner "Step 4/4 — GLIM"
+    banner "Step 4/5 — GLIM"
     if [[ -n "$CUDA_ARG" ]]; then
         bash "$SCRIPT_DIR/glim_setup.sh" "$CUDA_ARG"
     else
@@ -121,6 +124,28 @@ if ! glim_installed; then
 else
     step "GLIM — already installed, skipping."
 fi
+
+# ── Step 5: Git LFS — download bag files ─────────────────────────────────────
+banner "Step 5/5 — Git LFS (bag files)"
+
+# Install git-lfs if not present
+if ! command -v git-lfs &>/dev/null; then
+    info "Installing git-lfs..."
+    sudo apt install -y git-lfs
+else
+    info "git-lfs already installed."
+fi
+
+# Initialize Git LFS for this user (idempotent)
+git lfs install
+
+# Pull the actual bag files — replaces pointer files with real .db3 data
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+info "Pulling bag files in $REPO_DIR ..."
+info "This may take a while — bags total ~3.3 GB."
+git -C "$REPO_DIR" lfs pull
+
+info "Bag files downloaded."
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
