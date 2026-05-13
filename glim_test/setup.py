@@ -25,7 +25,8 @@ setup(
     license='MIT',
     entry_points={
         'console_scripts': [
-            'pcd_publisher = glim_test.pcd_publisher:main',
+            'pcd_publisher  = glim_test.pcd_publisher:main',
+            'convert_map    = glim_test.convert_map:main',
         ],
     },
 )
