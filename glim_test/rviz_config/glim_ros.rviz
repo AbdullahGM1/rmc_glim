@@ -4,6 +4,8 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /Point Cloud1/Topic1
+        - /Map1/Topic1
         - /Odometry1/Shape1
       Splitter Ratio: 0.5
     Tree Height: 684
@@ -72,9 +74,9 @@ Visualization Manager:
       Style: Flat Squares
       Topic:
         Depth: 5
-        Durability Policy: Volatile
+        Durability Policy: System Default
         History Policy: Keep Last
-        Reliability Policy: Reliable
+        Reliability Policy: Best Effort
         Value: /glim_ros/points
       Use Fixed Frame: true
       Use rainbow: true
@@ -82,8 +84,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 49.144317626953125
-        Min Value: -8.251194953918457
+        Max Value: 49.407691955566406
+        Min Value: -9.556763648986816
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -248,7 +250,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 106.6878433227539
+      Distance: 104.9110336303711
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -263,10 +265,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7547974586486816
+      Pitch: 0.7797974348068237
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.3417391777038574
+      Yaw: 2.816737651824951
     Saved: ~
 Window Geometry:
   Displays:
