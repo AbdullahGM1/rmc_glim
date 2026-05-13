@@ -27,6 +27,7 @@ driver_installed(){ dpkg -l 2>/dev/null | grep -q "nvidia-driver"; }
 ros2_installed()  { [[ -d /opt/ros/jazzy ]]; }
 cuda_installed()  { [[ -d /usr/local/cuda-13.2 ]]; }
 glim_installed()  { dpkg -l 2>/dev/null | grep -q "ros-jazzy-glim-ros"; }
+pcl_installed()   { command -v pcl_ply2pcd &>/dev/null; }
 lfs_pulled()      { find "$(cd "$SCRIPT_DIR/.." && pwd)/ros2_bags" -name "*.db3" -size +1M 2>/dev/null | grep -q .; }
 
 # ── Progress header ───────────────────────────────────────────────────────────
@@ -46,12 +47,14 @@ cuda_installed  && echo -e "  ${GREEN}[✓]${NC} CUDA 13.2 toolkit" \
                 || echo -e "  ${RED}[✗]${NC} CUDA 13.2 toolkit"
 glim_installed  && echo -e "  ${GREEN}[✓]${NC} GLIM" \
                 || echo -e "  ${RED}[✗]${NC} GLIM"
+pcl_installed   && echo -e "  ${GREEN}[✓]${NC} pcl-tools" \
+                || echo -e "  ${RED}[✗]${NC} pcl-tools"
 lfs_pulled      && echo -e "  ${GREEN}[✓]${NC} Bag files (Git LFS)" \
                 || echo -e "  ${RED}[✗]${NC} Bag files (Git LFS — not downloaded)"
 echo ""
 
 # ── Already complete? ─────────────────────────────────────────────────────────
-if driver_active && ros2_installed && cuda_installed && glim_installed && lfs_pulled; then
+if driver_active && ros2_installed && cuda_installed && glim_installed && pcl_installed && lfs_pulled; then
     info "All steps complete — GLIM is fully installed."
     echo ""
     info "Build and run:"
@@ -125,8 +128,16 @@ else
     step "GLIM — already installed, skipping."
 fi
 
-# ── Step 5: Git LFS — download bag files ─────────────────────────────────────
-banner "Step 5/5 — Git LFS (bag files)"
+# ── Step 5: pcl-tools ────────────────────────────────────────────────────────
+if ! pcl_installed; then
+    banner "Step 5/6 — pcl-tools"
+    sudo apt install -y pcl-tools
+else
+    step "pcl-tools — already installed, skipping."
+fi
+
+# ── Step 6: Git LFS — download bag files ─────────────────────────────────────
+banner "Step 6/6 — Git LFS (bag files)"
 
 # Install git-lfs if not present
 if ! command -v git-lfs &>/dev/null; then

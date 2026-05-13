@@ -1,4 +1,5 @@
 import os
+import datetime
 from launch import LaunchDescription
 from launch.actions import ExecuteProcess, TimerAction
 
@@ -8,6 +9,11 @@ def generate_launch_description():
     bag_path    = os.path.realpath(os.path.join(launch_dir, '..', '..', 'bag_test'))
     rviz_config = os.path.realpath(os.path.join(launch_dir, '..', 'rviz_config', 'glim_ros.rviz'))
 
+    bag_name  = os.path.basename(bag_path)
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    run_dir   = os.path.realpath(os.path.join(launch_dir, '..', 'maps', f'{bag_name}_{timestamp}'))
+    os.makedirs(run_dir, exist_ok=True)
+
     glim_env = os.environ.copy()
     glim_env['LD_LIBRARY_PATH'] = '/usr/local/lib:' + glim_env.get('LD_LIBRARY_PATH', '')
 
@@ -15,7 +21,9 @@ def generate_launch_description():
     glim_node = ExecuteProcess(
         cmd=[
             'ros2', 'run', 'glim_ros', 'glim_rosnode',
-            '--ros-args', '-p', f'config_path:={config_path}'
+            '--ros-args',
+            '-p', f'config_path:={config_path}',
+            '-p', f'dump_path:={run_dir}'
         ],
         env=glim_env,
         output='screen'

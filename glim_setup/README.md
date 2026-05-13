@@ -89,7 +89,15 @@ chmod +x glim_setup.sh
 ./glim_setup.sh 13.1    # With CUDA 13.1
 ```
 
-### Step 5 — Download bag files (Git LFS)
+### Step 5 — Install pcl-tools
+
+Required for `view_map.launch.py` — converts saved GLIM map files (`.ply`) to PCD format for RViz2 viewing.
+
+```bash
+sudo apt install -y pcl-tools
+```
+
+### Step 6 — Download bag files (Git LFS)
 
 The bag files (`.db3`) are stored in Git LFS. Without this step they exist as 130-byte
 pointer files and `ros2 bag play` will fail.

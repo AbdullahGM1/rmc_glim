@@ -9,35 +9,26 @@ Goal: run GLIM against recorded bag data to produce a 3D map of the environment.
 
 ---
 
-## Active Focus — Next Step
+## Active Focus
 
-**Working on: `slam_glim` package — launch file + GLIM config files.**
+**`glim_test` package — validated and working.**
 
-Following the official GLIM quickstart guide:
-**https://koide3.github.io/glim/quickstart.html**
+The quickstart test with the Ouster OS1-128 bag is complete. GLIM builds the map,
+saves the dump automatically, and the map can be viewed in the Iridescence viewer,
+edited in the map editor, or published to RViz2.
+
+### Next Steps (in order)
+
+1. **2D map conversion** — convert the GLIM PCD map to a 2D occupancy grid,
+   similar to what was done in `/home/abdullah/projects/RMC_2.0/ros2_ws/src/slam_map_converter`
+
+2. **POI selector** — add a POI selection workflow similar to
+   `/home/abdullah/projects/RMC_2.0/ros2_ws/src/slam_poi`
 
 ### Approach
 Discuss every detail before making any changes. Understand what each config file does,
 what each parameter means for our specific sensor setup, and why — then implement.
 No guessing. No copy-pasting without understanding.
-
-### What needs to be created
-| File | Status |
-|---|---|
-| `slam_glim/launch/glim.launch.py` | Not created yet |
-| `slam_glim/config/config.json` | Not created yet |
-| `slam_glim/config/config_ros.json` | Not created yet |
-| `slam_glim/config/config_sensors.json` | Not created yet |
-| `slam_glim/config/config_odometry_gpu.json` | Not created yet |
-| `slam_glim/config/config_sub_mapping_gpu.json` | Not created yet |
-| `slam_glim/config/config_global_mapping_gpu.json` | Not created yet |
-
-### Key sensor facts to keep in mind
-- LiDAR topic: `/velodyne_points`
-- IMU topic: **`/imu/gravity`** (NOT `/imu` — gravity is already subtracted there)
-- `T_lidar_imu`: `[0.0, 0.0, 0.0, 0.035460, 0.008223, 0.0, 0.999337]` (4.17° tilt correction)
-- GTSAM conflict: launch file must prepend `/usr/local/lib` to `LD_LIBRARY_PATH`
-- Active bag: `lower_fused` (~293 s, 5,827 LiDAR scans)
 
 ---
 
@@ -46,11 +37,14 @@ No guessing. No copy-pasting without understanding.
 ```
 ros2_rmc_ws/
 ├── src/
-│   └── rmc_glim/               ← this repo
+│   └── rmc_glim/                   ← this repo
+│       ├── bag_test/               # Quickstart test bag — Ouster OS1-128
+│       │   ├── os1_128_01.db3
+│       │   └── metadata.yaml
 │       ├── ros2_bags/
-│       │   ├── lower_fused/    # Active bag — lower LiDAR fused (~293 s)
-│       │   ├── fused_upper/    # Upper LiDAR fused (~112 s)
-│       │   ├── merged_bag/     # Both LiDARs merged (~225 s, ROS1-era timestamps)
+│       │   ├── lower_fused/        # Active RMC bag — lower LiDAR fused (~293 s)
+│       │   ├── fused_upper/        # Upper LiDAR fused (~112 s)
+│       │   ├── merged_bag/         # Both LiDARs merged (~225 s, ROS1-era timestamps)
 │       │   ├── ros1_bag_convert/
 │       │   │   ├── setup.sh        # One-time venv setup
 │       │   │   ├── convert_bag.sh  # Converts a ROS1 .bag → ROS2 .db3
@@ -58,94 +52,191 @@ ros2_rmc_ws/
 │       │   │   └── README.md
 │       │   ├── qos_override.yaml
 │       │   └── running_ros2bag_with_QOS.txt
-│       ├── slam_glim/          # ROS2 package
+│       ├── glim_test/              # ROS2 package — GLIM quickstart test (validated)
+│       │   ├── config/
+│       │   │   ├── gpu/            # GPU full SLAM (active)
+│       │   │   ├── cpu/            # CPU full SLAM
+│       │   │   ├── lidar_only/     # CT-ICP, no IMU, pose-graph loop closure
+│       │   │   └── README.md       # Full config reference
+│       │   ├── launch/
+│       │   │   ├── glim_test.launch.py   # SLAM: GLIM + bag + RViz2
+│       │   │   └── view_map.launch.py    # Map viewer: PLY→PCD + pcd_publisher + RViz2
+│       │   ├── rviz_config/
+│       │   │   ├── glim_ros.rviz         # Official config from koide3/glim_ros2
+│       │   │   └── view_map.rviz         # Map viewer config — /map_cloud, AxisColor
+│       │   ├── maps/                     # GLIM map dumps — one subdirectory per run
+│       │   │   └── <bag_name>_<YYYYMMDD_HHMMSS>/
+│       │   ├── glim_test/
+│       │   │   ├── __init__.py
+│       │   │   ├── pcd_publisher.py      # Reads ASCII PCD, publishes latched PointCloud2
+│       │   │   └── README.md             # Package usage + all GLIM tool commands
+│       │   ├── resource/glim_test
+│       │   ├── package.xml
+│       │   ├── setup.py
+│       │   └── setup.cfg
+│       ├── slam_glim/              # ROS2 package — RMC 2.0 robot (to be implemented)
 │       │   ├── slam_glim/
 │       │   │   └── __init__.py
-│       │   ├── launch/         # ← TO BE CREATED: glim.launch.py
-│       │   ├── config/         # ← TO BE CREATED: GLIM JSON configs
+│       │   ├── launch/
+│       │   ├── config/
 │       │   ├── resource/
 │       │   │   └── slam_glim
 │       │   ├── package.xml
 │       │   ├── setup.py
 │       │   └── setup.cfg
-│       ├── maps/               # GLIM map dumps — tracked in repo
-│       ├── glim_setup/         # Installation scripts
-│       │   ├── install.sh      # Master script — runs all steps in order
-│       │   ├── driver_setup.sh # Step 1: NVIDIA driver
-│       │   ├── ros2_setup.sh   # Step 2: ROS2 Jazzy Desktop
-│       │   ├── cuda_setup.sh   # Step 3: CUDA 13.2 toolkit
-│       │   ├── glim_setup.sh   # Step 4: GLIM dependencies + package
+│       ├── maps/                   # GLIM map dumps — tracked in repo
+│       ├── glim_setup/             # Installation scripts
+│       │   ├── install.sh          # Master script — 6 steps including pcl-tools
+│       │   ├── driver_setup.sh     # Step 1: NVIDIA driver
+│       │   ├── ros2_setup.sh       # Step 2: ROS2 Jazzy Desktop
+│       │   ├── cuda_setup.sh       # Step 3: CUDA 13.2 toolkit
+│       │   ├── glim_setup.sh       # Step 4: GLIM dependencies + package
 │       │   └── README.md
 │       ├── .gitignore
-│       ├── .gitattributes      # Git LFS tracking for *.db3 / *.bag
+│       ├── .gitattributes          # Git LFS tracking for *.db3 / *.bag
 │       ├── CLAUDE.md
 │       └── README.md
-└── build/                      # Generated by colcon — never inside src/
-└── install/                    # Generated by colcon — never inside src/
+└── build/                          # Generated by colcon — never inside src/
+└── install/                        # Generated by colcon — never inside src/
 ```
 
 **IMPORTANT:** Always run `colcon build` from `ros2_rmc_ws/`, never from inside the package directory.
 
 ---
 
-## Installation (Fresh Machine)
+## glim_test Package
 
-All system dependencies are handled by scripts in `glim_setup/`. Run in order:
-
-```bash
-cd glim_setup
-./install.sh 13.1   # runs all steps — reboots when needed, re-run after each reboot
-```
-
-Or manually:
-```bash
-./driver_setup.sh   # NVIDIA driver — REBOOT after
-./ros2_setup.sh     # ROS2 Jazzy Desktop — restart terminal after
-./cuda_setup.sh     # CUDA 13.2 toolkit
-./glim_setup.sh 13.1  # GLIM + dependencies
-sudo apt install -y git-lfs && git lfs install && git lfs pull  # bag files (~3.3 GB)
-```
-
-See `glim_setup/README.md` for full details.
-
----
-
-## Build and Run
+### Build and Run
 
 ```bash
 cd ros2_rmc_ws
-colcon build --packages-select slam_glim --symlink-install
+colcon build --packages-select glim_test --symlink-install
 source install/setup.bash
-ros2 launch slam_glim glim.launch.py
+ros2 launch glim_test glim_test.launch.py
 ```
 
-`--symlink-install` is required — the launch file uses `os.path.realpath(__file__)` to locate `src/` for map saving.
+### What the launch file does
+
+| Time | Event |
+|---|---|
+| `t=0s` | GLIM starts — Iridescence 3D viewer opens, waits for data |
+| `t=2s` | Bag plays with `--clock` |
+| `t=2s` | RViz2 opens with official GLIM config |
+| bag end | GLIM auto-saves map dump to `glim_test/maps/<bag_name>_<YYYYMMDD_HHMMSS>/` |
+
+### Map Saving — dump_path
+
+`glim_rosnode` is launched with `dump_path` pointing to a pre-created timestamped directory:
+
+```python
+run_dir = maps/<bag_name>_<YYYYMMDD_HHMMSS>
+os.makedirs(run_dir, exist_ok=True)   # created before GLIM starts
+# passed as: -p dump_path:=run_dir
+```
+
+When GLIM shuts down it auto-saves there. No copy step needed.
+
+### Viewing the Map in RViz2
+
+```bash
+ros2 launch glim_test view_map.launch.py
+```
+
+- Converts `MAP_PLY` → ASCII PCD using `pcl_ply2pcd -format 0` (skipped if PCD already exists)
+- `pcd_publisher` reads the PCD with numpy, publishes a latched `PointCloud2` on `/map_cloud`
+- RViz2 opens with `view_map.rviz` (AxisColor by Z, TRANSIENT_LOCAL)
+- Change `MAP_PLY` at the top of the launch file to point at a different run
+
+### Config Pipelines
+
+All config files are copied from GLIM's installed defaults at
+`/opt/ros/jazzy/share/glim/config/` and organized into three subdirectories.
+See `glim_test/config/README.md` for the full parameter reference.
+
+| Pipeline | Directory | Odometry | Sub-mapping | Global mapping |
+|---|---|---|---|---|
+| GPU full SLAM | `config/gpu/` | `libodometry_estimation_gpu.so` | VGICP_GPU | VGICP_GPU loop closure |
+| CPU full SLAM | `config/cpu/` | `libodometry_estimation_cpu.so` | VGICP CPU | VGICP CPU loop closure |
+| LiDAR-only | `config/lidar_only/` | `libodometry_estimation_ct.so` | Passthrough | Pose graph |
+
+The active pipeline is `gpu/`. To switch, change the `config_path` in `glim_test.launch.py`.
+
+### Sensor Config — bag_test (OS1-128)
+
+| Parameter | Value |
+|---|---|
+| `imu_topic` | `/os_cloud_node/imu` |
+| `points_topic` | `/os_cloud_node/points` |
+| `T_lidar_imu` | `[-0.006, 0.012, -0.008, 0.0, 0.0, 0.0, 1.0]` |
+
+**`T_lidar_imu` format** — TUM pose format: `[tx, ty, tz, qx, qy, qz, qw]`
+- Translation: LiDAR origin offset from IMU origin in meters
+- Rotation: quaternion — identity `[0,0,0,1]` means axes are aligned, only position differs
+- Wrong value → tilted or drifting map
+
+### RViz Config (SLAM)
+
+`rviz_config/glim_ros.rviz` is the **official config** fetched from:
+`https://github.com/koide3/glim_ros2/blob/master/rviz/glim_ros.rviz`
+
+| Display | Topic | Description |
+|---|---|---|
+| Point Cloud | `/glim_ros/points` | Current scan (orange) |
+| Map | `/glim_ros/map` | Global accumulated map (rainbow by Z) |
+| Odometry | `/glim_ros/odom` | Robot odometry pose |
+| Pose | `/glim_ros/pose` | Current pose arrow |
+| TF | — | `map → odom → os_imu → os_sensor → os_lidar` |
+
+### Known Warnings
+
+```
+[warning] large time difference between points and imu!!
+```
+
+This appears at startup during initialization — **harmless**. GLIM locks on to both
+streams within a few seconds and the map builds normally.
 
 ---
 
-## ROS1 → ROS2 Bag Conversion
+## GLIM Map Tools
 
-```bash
-cd ros2_bags/ros1_bag_convert
-./setup.sh                              # one-time venv setup
-./convert_bag.sh /path/to/file.bag      # output lands in ros2_bags/<bag_name>/
-```
+All require the GTSAM prefix: `LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH`
+
+See `glim_test/glim_test/README.md` for full usage of all tools.
+
+| Tool | Command | Use |
+|---|---|---|
+| `offline_viewer` | `ros2 run glim_ros offline_viewer --ros-args -p dump_path:=<path>` | Inspect finished map in Iridescence viewer |
+| `map_editor` | `ros2 run glim_ros map_editor --ros-args -p dump_path:=<path>` | Manually add/remove loop closures, re-optimize |
+| `glim_rosbag` | `ros2 run glim_ros glim_rosbag --ros-args -p config_path:=... -p bag_path:=... -p dump_path:=...` | Run SLAM offline on a bag without `ros2 bag play` |
+| `validator_node` | `ros2 run glim_ros validator_node --ros-args -p config_path:=<path>` | Validate sensor topics before a SLAM run |
+
+---
+
+## GTSAM Version Conflict
+
+GLIM needs GTSAM 4.3.0 (from koide3's PPA at `/usr/local/lib/`).
+ROS Jazzy ships GTSAM 4.2.0 at `/opt/ros/jazzy/lib/` which takes precedence when ROS is sourced.
+
+**Fix:** the launch file sets `LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH` scoped
+to the GLIM process only. No changes to `~/.bashrc` needed.
 
 ---
 
 ## Available Bags
 
-| Bag | Path | Duration | Messages | Has /tf_static | Notes |
-|---|---|---|---|---|---|
-| lower_fused | `ros2_bags/lower_fused/` | ~293 s | 85,124 | Yes | **Active — primary bag** |
-| fused_upper | `ros2_bags/fused_upper/` | ~112 s | 32,720 | Yes | Upper LiDAR only |
-| merged_bag | `ros2_bags/merged_bag/` | ~225 s | 65,722 | Yes | ROS1-era timestamps — use with caution |
+| Bag | Path | Duration | Topics | Notes |
+|---|---|---|---|---|
+| bag_test | `bag_test/` | ~115 s | `/os_cloud_node/points`, `/os_cloud_node/imu` | **Quickstart test bag — Ouster OS1-128** |
+| lower_fused | `ros2_bags/lower_fused/` | ~293 s | `/velodyne_points`, `/imu/gravity` | RMC 2.0 primary bag |
+| fused_upper | `ros2_bags/fused_upper/` | ~112 s | `/velodyne_points`, `/imu/gravity` | RMC 2.0 upper LiDAR |
+| merged_bag | `ros2_bags/merged_bag/` | ~225 s | `/velodyne_points`, `/imu/gravity` | ROS1-era timestamps — use with caution |
 
 **Do not loop bags** (`-l` flag) — GLIM crashes when sim time jumps backwards.
 
 ---
 
-## Bag Topics
+## RMC 2.0 Bag Topics
 
 | Topic | Type | Count (lower_fused) | Notes |
 |---|---|---|---|
@@ -169,7 +260,7 @@ randomly-oriented or flipped map — GLIM cannot determine the "up" direction wi
 
 ---
 
-## TF Frame Hierarchy
+## RMC 2.0 TF Frame Hierarchy
 
 ```
 map
@@ -188,17 +279,7 @@ No static transform override is needed in the launch file — adding one causes 
 
 ---
 
-## GTSAM Version Conflict
-
-GLIM needs GTSAM 4.3.0 (from koide3's PPA at `/usr/local/lib/`).
-ROS Jazzy ships GTSAM 4.2.0 at `/opt/ros/jazzy/lib/` which takes precedence when ROS is sourced.
-
-**Fix:** the launch file must set `LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH` scoped
-to the GLIM process only. No changes to `~/.bashrc` needed.
-
----
-
-## Map Orientation — T_lidar_imu
+## RMC 2.0 Map Orientation — T_lidar_imu
 
 The gravity vector from `/imu/gravity` is `[-0.16, 0.69, 9.71]` — not perfectly vertical.
 The 0.69 y-component causes a ~4.17° tilt. `T_lidar_imu` in `config_sensors.json` cancels this:
@@ -227,28 +308,37 @@ print([0,0,0, axis_n[0]*s, axis_n[1]*s, axis_n[2]*s, qw])
 
 ---
 
-## Map Saving
+## Installation (Fresh Machine)
 
-Maps save automatically when the bag finishes into a timestamped subdirectory:
-
-```
-maps/<bag_name>_<YYYYMMDD_HHMMSS>/
-├── 000000/, 000001/, ...  # Individual submaps
-├── graph.bin / graph.txt  # Pose graph with loop closure factors
-├── odom_lidar.txt / odom_imu.txt
-├── traj_lidar.txt / traj_imu.txt
-├── values.bin
-└── config/
-```
-
-### Viewing saved maps
+All system dependencies are handled by scripts in `glim_setup/`. Run in order:
 
 ```bash
-LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH \
-  ros2 run glim_ros offline_viewer --ros-args -p dump_path:=maps/lower_fused_<timestamp>
+cd glim_setup
+./install.sh 13.1   # runs all 6 steps — reboots when needed, re-run after each reboot
+```
 
-LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH \
-  ros2 run glim_ros map_editor --ros-args -p dump_path:=maps/lower_fused_<timestamp>
+Steps: NVIDIA driver → ROS2 Jazzy → CUDA 13.2 → GLIM → pcl-tools → Git LFS (bags)
+
+Or manually:
+```bash
+./driver_setup.sh        # NVIDIA driver — REBOOT after
+./ros2_setup.sh          # ROS2 Jazzy Desktop — restart terminal after
+./cuda_setup.sh          # CUDA 13.2 toolkit
+./glim_setup.sh 13.1     # GLIM + dependencies
+sudo apt install -y pcl-tools                              # for view_map.launch.py
+sudo apt install -y git-lfs && git lfs install && git lfs pull  # bag files (~3.3 GB)
+```
+
+See `glim_setup/README.md` for full details.
+
+---
+
+## ROS1 → ROS2 Bag Conversion
+
+```bash
+cd ros2_bags/ros1_bag_convert
+./setup.sh                              # one-time venv setup
+./convert_bag.sh /path/to/file.bag      # output lands in ros2_bags/<bag_name>/
 ```
 
 ---

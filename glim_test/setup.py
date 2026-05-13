@@ -24,6 +24,8 @@ setup(
     description='GLIM quickstart test — OS1-128 bag playback with GLIM SLAM',
     license='MIT',
     entry_points={
-        'console_scripts': [],
+        'console_scripts': [
+            'pcd_publisher = glim_test.pcd_publisher:main',
+        ],
     },
 )
