@@ -1,0 +1,54 @@
+# POIs — glim_bag_test_20260513_131336_20260513_150532
+pois:
+- id: 1
+  name: POI_1
+  timestamp: '2026-05-13T15:12:09'
+  frame_id: map
+  position:
+    x: 9.019187927246094
+    y: -3.2152938842773438
+    z: -1.7629013061523438
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+- id: 2
+  name: POI_2
+  timestamp: '2026-05-13T15:12:19'
+  frame_id: map
+  position:
+    x: -10.820018768310547
+    y: 32.612144470214844
+    z: -1.7920799255371094
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+- id: 3
+  name: POI_3
+  timestamp: '2026-05-13T15:12:32'
+  frame_id: map
+  position:
+    x: 16.03791046142578
+    y: -32.73875427246094
+    z: -1.5683555603027344
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+- id: 4
+  name: POI_4
+  timestamp: '2026-05-13T15:12:44'
+  frame_id: map
+  position:
+    x: 35.64303970336914
+    y: -38.88551330566406
+    z: 1.7671394348144531
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0

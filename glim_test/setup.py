@@ -27,6 +27,7 @@ setup(
         'console_scripts': [
             'pcd_publisher  = glim_test.pcd_publisher:main',
             'convert_map    = glim_test.convert_map:main',
+            'poi_selector   = glim_test.poi_selector:main',
         ],
     },
 )

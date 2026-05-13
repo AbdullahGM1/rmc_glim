@@ -1,4 +1,5 @@
 import os
+import datetime
 import subprocess
 from launch import LaunchDescription
 from launch.actions import ExecuteProcess, TimerAction
@@ -10,8 +11,19 @@ MAP_PLY = os.path.join(
     '..', 'maps', 'bag_test_20260513_131336', 'map_test.ply'
 )
 
+# POI files are saved to glim_test/POI_Poses/
+# Filename: glim_<map_name>_<YYYYMMDD_HHMMSS>.yaml
+_PACKAGE_DIR  = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+_POI_POSES_DIR = os.path.join(_PACKAGE_DIR, 'POI_Poses')
+_MAP_NAME     = os.path.basename(os.path.dirname(os.path.realpath(MAP_PLY)))
+_TIMESTAMP    = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+POIS_PATH     = os.path.join(_POI_POSES_DIR, f'glim_{_MAP_NAME}_{_TIMESTAMP}.yaml')
+
+
 def generate_launch_description():
-    launch_dir = os.path.dirname(os.path.realpath(__file__))
+    os.makedirs(_POI_POSES_DIR, exist_ok=True)
+
+    launch_dir  = os.path.dirname(os.path.realpath(__file__))
     rviz_config = os.path.realpath(os.path.join(launch_dir, '..', 'rviz_config', 'view_map.rviz'))
 
     ply_path = os.path.realpath(MAP_PLY)
@@ -21,10 +33,29 @@ def generate_launch_description():
     if not os.path.exists(pcd_path):
         subprocess.run(['pcl_ply2pcd', '-format', '0', ply_path, pcd_path], check=True)
 
+    # Static identity map → odom so RViz fixed frame "map" resolves without a live SLAM node
+    static_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='map_to_odom',
+        arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
+        output='screen'
+    )
+
     pcd_publisher = Node(
         package='glim_test',
         executable='pcd_publisher',
         parameters=[{'pcd_path': pcd_path}],
+        output='screen'
+    )
+
+    poi_selector = Node(
+        package='glim_test',
+        executable='poi_selector',
+        parameters=[{
+            'pois_path': POIS_PATH,
+            'load_existing': True,
+        }],
         output='screen'
     )
 
@@ -38,4 +69,4 @@ def generate_launch_description():
         ]
     )
 
-    return LaunchDescription([pcd_publisher, rviz])
+    return LaunchDescription([static_tf, pcd_publisher, poi_selector, rviz])
