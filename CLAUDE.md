@@ -11,19 +11,12 @@ Goal: run GLIM against recorded bag data to produce a 3D map of the environment.
 
 ## Active Focus
 
-**`glim_test` package — validated and working.**
+**`glim_test` package — fully working.**
 
-The quickstart test with the Ouster OS1-128 bag is complete. GLIM builds the map,
-saves the dump automatically, and the map can be viewed in the Iridescence viewer,
-edited in the map editor, or published to RViz2.
-
-### Next Steps (in order)
-
-1. **2D map conversion** — convert the GLIM PCD map to a 2D occupancy grid,
-   similar to what was done in `/home/abdullah/projects/RMC_2.0/ros2_ws/src/slam_map_converter`
-
-2. **POI selector** — add a POI selection workflow similar to
-   `/home/abdullah/projects/RMC_2.0/ros2_ws/src/slam_poi`
+All three phases are complete:
+1. **SLAM** — GLIM builds the 3D map from the OS1-128 bag, auto-saves dump on shutdown
+2. **2D map conversion** — `convert_map` reads the exported PCD → `.pgm` + `.yaml`
+3. **POI selector** — integrated into `view_map.launch.py`; click points in RViz2, saved as YAML
 
 ### Approach
 Discuss every detail before making any changes. Understand what each config file does,
@@ -52,7 +45,7 @@ ros2_rmc_ws/
 │       │   │   └── README.md
 │       │   ├── qos_override.yaml
 │       │   └── running_ros2bag_with_QOS.txt
-│       ├── glim_test/              # ROS2 package — GLIM quickstart test (validated)
+│       ├── glim_test/              # ROS2 package — GLIM quickstart test (complete)
 │       │   ├── config/
 │       │   │   ├── gpu/            # GPU full SLAM (active)
 │       │   │   ├── cpu/            # CPU full SLAM
@@ -60,15 +53,23 @@ ros2_rmc_ws/
 │       │   │   └── README.md       # Full config reference
 │       │   ├── launch/
 │       │   │   ├── glim_test.launch.py   # SLAM: GLIM + bag + RViz2
-│       │   │   └── view_map.launch.py    # Map viewer: PLY→PCD + pcd_publisher + RViz2
+│       │   │   └── view_map.launch.py    # Map viewer + POI selector
 │       │   ├── rviz_config/
 │       │   │   ├── glim_ros.rviz         # Official config from koide3/glim_ros2
-│       │   │   └── view_map.rviz         # Map viewer config — /map_cloud, AxisColor
+│       │   │   └── view_map.rviz         # Map viewer + POI markers + PublishPoint tool
 │       │   ├── maps/                     # GLIM map dumps — one subdirectory per run
 │       │   │   └── <bag_name>_<YYYYMMDD_HHMMSS>/
+│       │   │       ├── 000000/, 000001/, ...   # Binary submap dirs
+│       │   │       ├── map_test.ply             # Exported from map_editor
+│       │   │       ├── map_test.pcd             # Converted by view_map.launch.py
+│       │   │       ├── glim_2d_map.pgm          # 2D occupancy grid
+│       │   │       └── glim_2d_map.yaml         # Map metadata for nav2_map_server
+│       │   ├── POI_Poses/                # Saved POI YAML files (gitignored content)
 │       │   ├── glim_test/
 │       │   │   ├── __init__.py
 │       │   │   ├── pcd_publisher.py      # Reads ASCII PCD, publishes latched PointCloud2
+│       │   │   ├── convert_map.py        # Converts PCD → 2D occupancy grid (.pgm + .yaml)
+│       │   │   ├── poi_selector.py       # /clicked_point → YAML + /poi_pose + /poi_markers
 │       │   │   └── README.md             # Package usage + all GLIM tool commands
 │       │   ├── resource/glim_test
 │       │   ├── package.xml
@@ -112,10 +113,23 @@ ros2_rmc_ws/
 cd ros2_rmc_ws
 colcon build --packages-select glim_test --symlink-install
 source install/setup.bash
-ros2 launch glim_test glim_test.launch.py
 ```
 
-### What the launch file does
+### Executables
+
+| Executable | Command | Purpose |
+|---|---|---|
+| `glim_test.launch.py` | `ros2 launch glim_test glim_test.launch.py` | Run GLIM SLAM on bag |
+| `view_map.launch.py` | `ros2 launch glim_test view_map.launch.py` | View 3D map + select POIs |
+| `convert_map` | `ros2 run glim_test convert_map` | Convert PCD → 2D occupancy grid |
+
+---
+
+## GLIM SLAM — glim_test.launch.py
+
+```bash
+ros2 launch glim_test glim_test.launch.py
+```
 
 | Time | Event |
 |---|---|
@@ -136,18 +150,81 @@ os.makedirs(run_dir, exist_ok=True)   # created before GLIM starts
 
 When GLIM shuts down it auto-saves there. No copy step needed.
 
-### Viewing the Map in RViz2
+---
+
+## Map Viewer + POI Selector — view_map.launch.py
 
 ```bash
 ros2 launch glim_test view_map.launch.py
 ```
 
-- Converts `MAP_PLY` → ASCII PCD using `pcl_ply2pcd -format 0` (skipped if PCD already exists)
-- `pcd_publisher` reads the PCD with numpy, publishes a latched `PointCloud2` on `/map_cloud`
-- RViz2 opens with `view_map.rviz` (AxisColor by Z, TRANSIENT_LOCAL)
-- Change `MAP_PLY` at the top of the launch file to point at a different run
+**What it does:**
+1. Converts `MAP_PLY` → ASCII PCD using `pcl_ply2pcd -format 0` (skipped if PCD already exists)
+2. Publishes `static_transform_publisher` for `map → odom` (so RViz fixed frame resolves without a live SLAM node)
+3. `pcd_publisher` reads the PCD, publishes a latched `PointCloud2` on `/map_cloud`
+4. `poi_selector` listens on `/clicked_point`, saves POIs to YAML, publishes `/poi_pose` + `/poi_markers`
+5. RViz2 opens (2s delay) with `view_map.rviz`
 
-### Config Pipelines
+**Switching maps:** change `MAP_PLY` at the top of the launch file.
+
+### How to select POIs
+
+1. Launch `view_map.launch.py`
+2. In RViz2, select the **Publish Point** tool (crosshair icon in toolbar)
+3. Click any point on the 3D cloud
+4. A red sphere + label appears; the YAML file is updated automatically
+5. Repeat for additional POIs
+
+### POI file format
+
+Saved to `glim_test/POI_Poses/glim_<map_name>_<YYYYMMDD_HHMMSS>.yaml`:
+
+```yaml
+# POIs — glim_bag_test_20260513_131336_20260513_143021
+pois:
+  - id: 1
+    name: POI_1
+    timestamp: '2026-05-13T14:30:21'
+    frame_id: map
+    position: {x: 1.234, y: 2.345, z: -1.123}
+    orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+```
+
+---
+
+## 2D Map Conversion — convert_map
+
+```bash
+ros2 run glim_test convert_map
+```
+
+Reads `MAP_PCD` (hardcoded at the top of `convert_map.py`), projects the 3D point cloud
+to a 2D occupancy grid, and saves `.pgm` + `.yaml` alongside the PCD in the same run directory.
+
+**Switching maps:** change `MAP_PCD` at the top of `convert_map.py`.
+
+### Pipeline
+
+1. **Read PCD** — parses `FIELDS` header, extracts `x`, `y`, `z` columns (ignores `intensity`)
+2. **Voxel downsample** at 0.05 m — removes redundant cells
+3. **Ground detection** — z-histogram on the bottom 1.5 m (from 1st percentile, not `z_min`, to ignore outlier points); finds the densest bin = floor peak; walks up until counts drop below 20% = top of ground cluster
+4. **Height filter** — keeps points from `max(ground_top, ground_peak + 0.30 m)` to `ground_peak + 3.0 m`
+5. **Grid allocation** — 205 (unknown gray) filled grid, 0.05 m/pixel, 1 m padding
+6. **Mark occupied** — project x/y, set cells to 0 (black)
+7. **Save** — `np.flipud` before writing (ROS2: row 0 = world y_max); `.yaml` origin = bottom-left corner
+
+**Why 1st percentile instead of `z_min`:** the exported PLY/PCD map can contain sparse outlier
+points below the actual floor (e.g., at -6.25 m while the real floor is at -1.65 m). Using
+`z_min` puts the search window entirely in empty space and misses the real ground peak.
+
+**Output convention** matches `nav2_map_server map_saver_cli`:
+- Pixel `0` = black = occupied
+- Pixel `205` = gray = unknown
+- Pixel `254` = white = free (not written — no ray casting)
+
+---
+
+## Config Pipelines
 
 All config files are copied from GLIM's installed defaults at
 `/opt/ros/jazzy/share/glim/config/` and organized into three subdirectories.
@@ -161,7 +238,9 @@ See `glim_test/config/README.md` for the full parameter reference.
 
 The active pipeline is `gpu/`. To switch, change the `config_path` in `glim_test.launch.py`.
 
-### Sensor Config — bag_test (OS1-128)
+---
+
+## Sensor Config — bag_test (OS1-128)
 
 | Parameter | Value |
 |---|---|
@@ -174,28 +253,6 @@ The active pipeline is `gpu/`. To switch, change the `config_path` in `glim_test
 - Rotation: quaternion — identity `[0,0,0,1]` means axes are aligned, only position differs
 - Wrong value → tilted or drifting map
 
-### RViz Config (SLAM)
-
-`rviz_config/glim_ros.rviz` is the **official config** fetched from:
-`https://github.com/koide3/glim_ros2/blob/master/rviz/glim_ros.rviz`
-
-| Display | Topic | Description |
-|---|---|---|
-| Point Cloud | `/glim_ros/points` | Current scan (orange) |
-| Map | `/glim_ros/map` | Global accumulated map (rainbow by Z) |
-| Odometry | `/glim_ros/odom` | Robot odometry pose |
-| Pose | `/glim_ros/pose` | Current pose arrow |
-| TF | — | `map → odom → os_imu → os_sensor → os_lidar` |
-
-### Known Warnings
-
-```
-[warning] large time difference between points and imu!!
-```
-
-This appears at startup during initialization — **harmless**. GLIM locks on to both
-streams within a few seconds and the map builds normally.
-
 ---
 
 ## GLIM Map Tools
@@ -207,7 +264,7 @@ See `glim_test/glim_test/README.md` for full usage of all tools.
 | Tool | Command | Use |
 |---|---|---|
 | `offline_viewer` | `ros2 run glim_ros offline_viewer --ros-args -p dump_path:=<path>` | Inspect finished map in Iridescence viewer |
-| `map_editor` | `ros2 run glim_ros map_editor --ros-args -p dump_path:=<path>` | Manually add/remove loop closures, re-optimize |
+| `map_editor` | `ros2 run glim_ros map_editor --ros-args -p dump_path:=<path>` | Manually add/remove loop closures, re-optimize; export PLY |
 | `glim_rosbag` | `ros2 run glim_ros glim_rosbag --ros-args -p config_path:=... -p bag_path:=... -p dump_path:=...` | Run SLAM offline on a bag without `ros2 bag play` |
 | `validator_node` | `ros2 run glim_ros validator_node --ros-args -p config_path:=<path>` | Validate sensor topics before a SLAM run |
 
