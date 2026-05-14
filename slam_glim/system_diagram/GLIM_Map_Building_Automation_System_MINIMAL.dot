@@ -1,0 +1,50 @@
+digraph GLIM_Minimal {
+    rankdir=TB;
+    graph [
+        bgcolor=white
+        fontname="Helvetica-Bold"
+        pad=1.0
+        nodesep=0.9
+        ranksep=0.5
+        dpi=200
+        splines=spline
+    ];
+    node [
+        fontname="Helvetica-Bold"
+        style="filled,rounded"
+        shape=box
+        penwidth=0
+        margin="0.3,0.20"
+    ];
+    edge [penwidth=2.5 color="#555555" arrowhead=vee arrowsize=1.1];
+
+    // ── Phase 1 (full-width banner) ───────────────────────────────────────
+    p1 [label="Phase 1  ·  Docker Environment  ·  CUDA 13.2  +  ROS2 Jazzy  +  GLIM"
+        fillcolor="#1A5276" fontcolor=white fontsize=16 width=12.5 height=0.9]
+
+    // ── Phase 2 pipeline ──────────────────────────────────────────────────
+    { rank=same
+        bag    [label="Bag\nPreparation"  fillcolor="#2471A3" fontcolor=white fontsize=14 width=1.65 height=0.95]
+        config [label="Sensor\nConfig"    fillcolor="#B03A2E" fontcolor=white fontsize=14 width=1.65 height=0.95]
+        slam   [label="GLIM\nSLAM"        fillcolor="#9A7D0A" fontcolor=white fontsize=14 width=1.65 height=0.95]
+        refine [label="Map\nRefinement"   fillcolor="#6C3483" fontcolor=white fontsize=14 width=1.65 height=0.95]
+        export [label="Export\n& Output"  fillcolor="#1D6A39" fontcolor=white fontsize=14 width=1.65 height=0.95]
+    }
+
+    // ── Phase 2 caption ───────────────────────────────────────────────────
+    ph2_label [label="Phase 2  ·  Interactive CLI Wizard    ( ros2 run slam_glim main )"
+               shape=plaintext fontsize=13 fontname="Helvetica" fontcolor="#555555"
+               style="" width=0 height=0]
+
+    // ── Phase 3 (full-width banner) ───────────────────────────────────────
+    p3 [label="Phase 3  ·  Web Dashboard  ·  Browser UI  ·  3D Map Viewer  ·  Live Tracking  ·  OEM Sharing"
+        fillcolor="#1C2833" fontcolor=white fontsize=16 width=12.5 height=0.9]
+
+    // ── Pipeline flow (only arrows inside Phase 2) ────────────────────────
+    bag -> config -> slam -> refine -> export
+
+    // ── Invisible centering: aligns all rows on the slam (center) column ──
+    p1        -> slam      [style=invis weight=100]
+    slam      -> ph2_label [style=invis weight=100]
+    ph2_label -> p3        [style=invis weight=100]
+}
