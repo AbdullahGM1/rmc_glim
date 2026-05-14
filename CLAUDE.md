@@ -1,5 +1,7 @@
 # CLAUDE.md — rmc_glim
 
+> **This is the one and only CLAUDE.md for this project.** Do not copy or back it up elsewhere.
+
 ## Project Overview
 
 Standalone ROS2 Jazzy workspace for **GLIM 3D SLAM** on the RMC 2.0 robot.
@@ -11,15 +13,25 @@ Goal: run GLIM against recorded bag data to produce a 3D map of the environment.
 
 ## Active Focus
 
-**`glim_test` package — fully working.**
+**`glim_test` package — fully working (verification sandbox, do not modify).**
+**`slam_glim` package — active development: GLIM Map Building Automation System.**
 
-All three phases are complete:
+### glim_test status — complete
 1. **SLAM** — GLIM builds the 3D map from the OS1-128 bag, auto-saves dump on shutdown
 2. **2D map conversion** — `convert_map` reads the exported PCD → `.pgm` + `.yaml`
 3. **POI selector** — integrated into `view_map.launch.py`; click points in RViz2, saved as YAML
 
-**Final phase (pending):**
-4. **Dockerize** — containerize the full project after `slam_glim` is complete and working end-to-end
+### slam_glim status — design complete, implementation pending
+The full design is documented in the plan file:
+`slam_glim/system_diagram/GLIM_Map_Building_Automation_System_PLAN.md`
+
+System diagram (PNG + SVG):
+`slam_glim/system_diagram/GLIM_Map_Building_Automation_System.png`
+
+**Phases:**
+- **Phase 1** — Docker environment (CUDA 13.2 + ROS2 Jazzy + GLIM). See `DOCKER_PLAN.md`.
+- **Phase 2** — Interactive CLI wizard (`ros2 run slam_glim main`). **Active implementation target.**
+- **Phase 3** — Web Dashboard (replaces CLI with browser UI). After Phase 2 is complete.
 
 ### Approach
 Discuss every detail before making any changes. Understand what each config file does,
@@ -78,11 +90,50 @@ ros2_rmc_ws/
 │       │   ├── package.xml
 │       │   ├── setup.py
 │       │   └── setup.cfg
-│       ├── slam_glim/              # ROS2 package — RMC 2.0 robot (to be implemented)
-│       │   ├── slam_glim/
-│       │   │   └── __init__.py
+│       ├── slam_glim/              # ROS2 package — GLIM Map Building Automation System
+│       │   ├── slam_glim/                        # Python package
+│       │   │   ├── __init__.py
+│       │   │   ├── main.py                       # CLI wizard entry point
+│       │   │   ├── steps/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── bag_convert.py            # Step 1:   ROS1 → ROS2 bag conversion
+│       │   │   │   ├── config_setup.py           # Step 1.5: user_config.yaml → GLIM JSON
+│       │   │   │   ├── validator.py              # Step 2:   validator_node + report
+│       │   │   │   ├── slam_runner.py            # Step 3+4: pipeline select + run GLIM
+│       │   │   │   ├── map_editor_launcher.py    # Step 5+6: edit/merge via map_editor
+│       │   │   │   ├── export_map.py             # Step 7:   dump → PCD (pure Python)
+│       │   │   │   ├── convert_map.py            # Step 8:   PCD → 2D occupancy grid
+│       │   │   │   └── poi_viewer.py             # Step 9:   RViz2 + POI registration
+│       │   │   ├── nodes/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── pcd_publisher.py          # ROS2 node: PCD → latched PointCloud2
+│       │   │   │   └── poi_selector.py           # ROS2 node: /clicked_point → YAML + markers
+│       │   │   └── utils/
+│       │   │       ├── __init__.py
+│       │   │       └── terminal.py               # Colored terminal output helpers
 │       │   ├── launch/
+│       │   │   ├── view_map.launch.py            # Step 9: pcd_publisher + poi_selector + RViz2
+│       │   │   └── map_editor.launch.py          # Steps 5+6: map_editor subprocess
 │       │   ├── config/
+│       │   │   ├── user_config.yaml              # ← USER EDITS THIS (Step 1.5)
+│       │   │   ├── gpu/                          # GLIM GPU full SLAM config
+│       │   │   │   ├── config_ros.json           # ← auto-filled by config_setup.py
+│       │   │   │   ├── config_sensors.json       # ← auto-filled by config_setup.py
+│       │   │   │   └── ... (other GLIM JSON files)
+│       │   │   ├── cpu/                          # GLIM CPU full SLAM config
+│       │   │   └── lidar_only/                   # GLIM LiDAR-only config
+│       │   ├── rviz_config/
+│       │   │   └── view_map.rviz
+│       │   ├── maps/                             # All GLIM dumps land here
+│       │   │   └── <bag_name>_<YYYYMMDD_HHMMSS>/
+│       │   │       ├── 000000/, 000001/, ...     # Binary submap dirs
+│       │   │       ├── map.pcd                   # Written by export_map.py
+│       │   │       ├── map_2d.pgm / map_2d.yaml  # Written by convert_map.py
+│       │   │       └── POI_Poses/               # POI YAML files
+│       │   ├── system_diagram/                   # Design docs (not part of ROS build)
+│       │   │   ├── GLIM_Map_Building_Automation_System.png
+│       │   │   ├── GLIM_Map_Building_Automation_System.svg
+│       │   │   └── GLIM_Map_Building_Automation_System_PLAN.md
 │       │   ├── resource/
 │       │   │   └── slam_glim
 │       │   ├── package.xml
@@ -255,6 +306,201 @@ The active pipeline is `gpu/`. To switch, change the `config_path` in `glim_test
 - Translation: LiDAR origin offset from IMU origin in meters
 - Rotation: quaternion — identity `[0,0,0,1]` means axes are aligned, only position differs
 - Wrong value → tilted or drifting map
+
+---
+
+## slam_glim Package — GLIM Map Building Automation System
+
+### Overview
+
+`slam_glim` is the production ROS2 package for the RMC 2.0 robot. It implements a 3-phase system:
+
+| Phase | Name | Status |
+|---|---|---|
+| **Phase 1** | Docker environment (CUDA 13.2 + ROS2 Jazzy + GLIM) | Planned — see `DOCKER_PLAN.md` |
+| **Phase 2** | Interactive CLI wizard — full bag-to-POI pipeline in one terminal command | **Active implementation target** |
+| **Phase 3** | Web dashboard — browser UI, 3D map viewer, live tracking, OEM sharing | After Phase 2 |
+
+Full design plan: `slam_glim/system_diagram/GLIM_Map_Building_Automation_System_PLAN.md`
+System diagram: `slam_glim/system_diagram/GLIM_Map_Building_Automation_System.png`
+
+### Build and Run
+
+```bash
+cd ros2_rmc_ws
+colcon build --packages-select slam_glim --symlink-install
+source install/setup.bash
+ros2 run slam_glim main
+```
+
+Always build with `--symlink-install` — `os.path.realpath(__file__)` must resolve to `src/`, not `install/`.
+
+### The Full Pipeline
+
+The wizard runs as a single terminal session. Each step asks the user a question, launches tools as subprocesses, and moves forward automatically.
+
+```
+[1]   Bag Conversion      — Is this a ROS1 .bag? → auto-convert if yes
+[1.5] Sensor Config       — Open user_config.yaml, fill topics + T_lidar_imu
+                            System auto-fills all GLIM JSON config files
+[2]   Sensor Validation   — Run validator_node → human reviews report → fix if needed
+[3a]  SLAM Pipeline       — Select: [1] GPU  [2] CPU  [3] LiDAR-only
+[3b]  Config Review       — Show all settings, confirm before SLAM starts
+[4]   SLAM Mode           — [1] Live viewer (glim_rosnode + bag play)
+                            [2] Fast offline (glim_rosbag, no viewer)
+                            → GLIM runs → dump auto-saved
+[5]   Edit/Modify Map     — Open map_editor → loop until done
+[6]   Merge Maps          — Open map_editor with two dumps → user merges
+[7]   Export Map          — AUTOMATED: dump → PCD (pure Python, no GUI, no PLY)
+[8]   2D Map              — PCD → .pgm + .yaml occupancy grid
+[9]   POI Registration    — RViz2 + pcd_publisher + poi_selector
+```
+
+### Step 1.5 — Sensor Config (`user_config.yaml`)
+
+The user edits **one YAML file** — never the GLIM JSON files directly.
+`config_setup.py` reads it and auto-fills all six affected JSON files (gpu + cpu + lidar_only pipelines).
+
+**`slam_glim/config/user_config.yaml` format:**
+
+```yaml
+# GLIM Sensor Configuration — edit once per robot/sensor setup
+imu_topic:    /imu/gravity        # IMU topic in the bag
+lidar_topic:  /velodyne_points    # LiDAR topic in the bag
+T_lidar_imu:                      # LiDAR-to-IMU extrinsic [tx, ty, tz, qx, qy, qz, qw]
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.035460
+  - 0.008223
+  - 0.0
+  - 0.999337
+```
+
+**Only these three fields go in `user_config.yaml`** — all other GLIM config parameters use correct defaults for the RMC robot and must not be changed without understanding:
+
+| Field | Description | RMC 2.0 value |
+|---|---|---|
+| `imu_topic` | IMU topic in the bag | `/imu/gravity` |
+| `lidar_topic` | LiDAR topic in the bag | `/velodyne_points` |
+| `T_lidar_imu` | LiDAR-to-IMU extrinsic `[tx,ty,tz,qx,qy,qz,qw]` | `[0,0,0,0.035460,0.008223,0,0.999337]` |
+
+The `T_lidar_imu` quaternion cancels the 4.17° tilt from the gravity vector — see **RMC 2.0 Map Orientation** section below.
+
+**JSON files auto-filled by `config_setup.py`:**
+
+```
+user_config.yaml
+  └─ config/gpu/config_ros.json        ← imu_topic, points_topic
+  └─ config/gpu/config_sensors.json   ← T_lidar_imu
+  └─ config/cpu/config_ros.json
+  └─ config/cpu/config_sensors.json
+  └─ config/lidar_only/config_ros.json
+  └─ config/lidar_only/config_sensors.json
+```
+
+### Step 7 — Export Map (Dump → PCD, No GUI)
+
+GLIM's offline_viewer and map_editor only expose PLY export through the GUI — there is no CLI flag (confirmed by checking `--help` and binary symbols). The dump binary format is directly parseable in Python, bypassing the GUI entirely.
+
+**Dump format** (verified against actual GLIM output):
+- Each submap dir (`000000/`, `000001/`, ...) contains:
+  - `points_compact.bin` — raw points as **float32 XYZ**, 12 bytes/point (no intensity)
+  - `data.txt` — contains `T_world_origin` as a 4×4 transform matrix (text format)
+
+**Algorithm in `export_map.py`:**
+```python
+all_points = []
+for submap_dir in sorted(glob(dump_path + "/[0-9]*/")):
+    T = parse_T_world_origin(submap_dir + "/data.txt")           # 4x4 np.array
+    pts = np.fromfile(submap_dir + "/points_compact.bin", dtype=np.float32).reshape(-1, 3)
+    pts_h = np.hstack([pts, np.ones((len(pts), 1), dtype=np.float32)])
+    pts_world = (T @ pts_h.T).T[:, :3]
+    all_points.append(pts_world)
+all_points = np.vstack(all_points)
+# voxel downsample 0.05m → write ASCII PCD v0.7 to dump_path/map.pcd
+```
+
+### SLAM Pipeline Options
+
+| Pipeline | Config dir | Odometry | Use when |
+|---|---|---|---|
+| GPU | `config/gpu/` | VGICP_GPU — CUDA | Default for RMC robot (has NVIDIA GPU) |
+| CPU | `config/cpu/` | VGICP CPU | No CUDA available |
+| LiDAR-only | `config/lidar_only/` | CT-ICP, no IMU | Bag has no IMU data |
+
+Pipeline is selected interactively each time SLAM is run — not hardcoded.
+
+### SLAM Modes
+
+| Mode | Tool | Viewer | Speed |
+|---|---|---|---|
+| Live viewer | `glim_rosnode` + `ros2 bag play` | Iridescence 3D viewer opens | Real-time |
+| Fast offline | `glim_rosbag` | No viewer | Faster than real-time |
+
+### GTSAM Version Fix (Applied in All GLIM Subprocesses)
+
+GLIM needs GTSAM 4.3.0 at `/usr/local/lib/`. ROS Jazzy ships 4.2.0 at `/opt/ros/jazzy/lib/` which takes precedence. Every subprocess that launches a GLIM tool sets:
+
+```python
+env = os.environ.copy()
+env["LD_LIBRARY_PATH"] = "/usr/local/lib:" + env.get("LD_LIBRARY_PATH", "")
+subprocess.run([...], env=env)
+```
+
+Applied in: `validator.py`, `slam_runner.py`, `map_editor_launcher.py`. Not needed for pure Python steps.
+
+### Phase 3 Design Constraint
+
+All step modules accept user decisions as **function parameters** — no `input()` calls inside them. This allows the web dashboard backend (Phase 3) to call the exact same modules:
+
+```python
+# Phase 2 CLI:     prompts user via terminal
+# Phase 3 backend: passes decisions programmatically, returns report as string
+run_validator(bag_path, config_path, auto_continue=True)
+```
+
+### Implementation Order
+
+| Order | File | Why |
+|---|---|---|
+| 1 | `steps/export_map.py` | Core unique logic — binary format verified, no dependencies |
+| 2 | `steps/convert_map.py` | Pure Python — copy + adapt from glim_test |
+| 3 | `nodes/pcd_publisher.py` + `nodes/poi_selector.py` | Copy from glim_test |
+| 4 | `launch/view_map.launch.py` + `rviz_config/view_map.rviz` | Wire nodes together |
+| 5 | `steps/config_setup.py` | Read user_config.yaml → push to GLIM JSON files |
+| 6 | `steps/slam_runner.py` | GLIM launch: pipeline select + config review + two modes |
+| 7 | `steps/validator.py` | Subprocess + report printing |
+| 8 | `steps/bag_convert.py` | Wrap existing shell script |
+| 9 | `steps/map_editor_launcher.py` | Simple subprocess wrapper |
+| 10 | `main.py` | Wire all steps into the wizard |
+| 11 | `setup.py` + `package.xml` | Finalize build |
+
+### `setup.py` Entry Points
+
+```python
+entry_points={
+    'console_scripts': [
+        'main          = slam_glim.main:main',
+        'pcd_publisher = slam_glim.nodes.pcd_publisher:main',
+        'poi_selector  = slam_glim.nodes.poi_selector:main',
+        'convert_map   = slam_glim.steps.convert_map:main',
+        'export_map    = slam_glim.steps.export_map:main',
+    ],
+},
+```
+
+### What to Reuse from `glim_test`
+
+| Component | Source | Action |
+|---|---|---|
+| `pcd_publisher` | `glim_test/glim_test/pcd_publisher.py` | Copy to `slam_glim/nodes/` |
+| `poi_selector` | `glim_test/glim_test/poi_selector.py` | Copy to `slam_glim/nodes/` |
+| `convert_map` pipeline | `glim_test/glim_test/convert_map.py` | Copy logic to `slam_glim/steps/convert_map.py` |
+| `view_map.rviz` | `glim_test/rviz_config/view_map.rviz` | Copy to `slam_glim/rviz_config/` |
+| GLIM config files | `glim_test/config/gpu/`, `cpu/`, `lidar_only/` | Copy entire directories to `slam_glim/config/` |
+
+`glim_test` remains unchanged — it is the verified testing sandbox.
 
 ---
 
