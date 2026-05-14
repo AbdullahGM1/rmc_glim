@@ -18,6 +18,9 @@ All three phases are complete:
 2. **2D map conversion** — `convert_map` reads the exported PCD → `.pgm` + `.yaml`
 3. **POI selector** — integrated into `view_map.launch.py`; click points in RViz2, saved as YAML
 
+**Final phase (pending):**
+4. **Dockerize** — containerize the full project after `slam_glim` is complete and working end-to-end
+
 ### Approach
 Discuss every detail before making any changes. Understand what each config file does,
 what each parameter means for our specific sensor setup, and why — then implement.
