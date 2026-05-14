@@ -1,0 +1,12 @@
+{
+  "global": {
+    "config_global_mapping": "config_global_mapping_gpu.json",
+    "config_odometry": "config_odometry_gpu.json",
+    "config_path": "/home/koide/datasets/mmm/dump_rosbag2_2025_02_13-15_53_46/config",
+    "config_preprocess": "config_preprocess.json",
+    "config_ros": "config_ros.json",
+    "config_sensors": "config_sensors.json",
+    "config_sub_mapping": "config_sub_mapping_gpu.json",
+    "config_viewer": "config_viewer.json"
+  }
+}

@@ -1,0 +1,28 @@
+num_submaps: 11
+num_all_frames: 1470
+num_matching_cost_factors: 25
+matching_cost vgicp_gpu 4 7
+matching_cost vgicp_gpu 3 4
+matching_cost vgicp_gpu 4 5
+matching_cost vgicp_gpu 3 7
+matching_cost vgicp_gpu 0 1
+matching_cost vgicp_gpu 3 8
+matching_cost vgicp_gpu 5 6
+matching_cost vgicp_gpu 0 10
+matching_cost vgicp_gpu 1 10
+matching_cost vgicp_gpu 4 6
+matching_cost vgicp_gpu 6 7
+matching_cost vgicp_gpu 4 8
+matching_cost vgicp_gpu 9 10
+matching_cost vgicp_gpu 1 9
+matching_cost vgicp_gpu 3 9
+matching_cost vgicp_gpu 0 9
+matching_cost vgicp_gpu 5 8
+matching_cost vgicp_gpu 2 3
+matching_cost vgicp_gpu 2 9
+matching_cost vgicp_gpu 8 9
+matching_cost vgicp_gpu 5 7
+matching_cost vgicp_gpu 3 5
+matching_cost vgicp_gpu 2 8
+matching_cost vgicp_gpu 7 8
+matching_cost vgicp_gpu 1 2
